@@ -36,52 +36,80 @@
       "license_url": "https://github.com/mozilla/hubs-avatars/blob/master/LICENSE"
     },
     {
-      "name": "Y-Bot Running (mixamo-to-gltf example)",
-      "source": "stefnotch/mixamo-to-gltf",
-      "url": "https://github.com/stefnotch/mixamo-to-gltf/blob/master/output/Y-Bot/Running.glb?raw=true",
-      "notes": "Example Mixamo-converted animation (running). Use only if you accept Mixamo-exported clips.",
-      "license_url": "https://github.com/stefnotch/mixamo-to-gltf/blob/master/LICENSE"
+      "name": "Ready Player Me — Masculine animations index",
+      "source": "readyplayerme/animation-library",
+      "url": "https://github.com/readyplayerme/animation-library/tree/master/masculine",
+      "notes": "Large set of glb animation clips; useful if you want non-Mixamo combat motion from an established mocap pack.",
+      "license_url": "https://github.com/readyplayerme/animation-library/blob/master/LICENSE"
+    },
+    {
+      "name": "ToxSam — Open-source-3D-assets (index)",
+      "source": "ToxSam/open-source-3D-assets",
+      "url": "https://github.com/ToxSam/open-source-3D-assets",
+      "notes": "Registry of 900+ CC0 glb models (many props). Search the repo for weapons/props/environment pieces.",
+      "license_url": "https://github.com/ToxSam/open-source-3D-assets/blob/master/LICENSE"
+    },
+    {
+      "name": "MetaworldOS — Game-assets pack (props)",
+      "source": "metaworldos/game-assets",
+      "url": "https://github.com/metaworldos/game-assets",
+      "notes": "Small collections of props and pickups; check repo for direct glb downloads.",
+      "license_url": "https://github.com/metaworldos/game-assets/blob/main/LICENSE"
     }
   ],
   "props": [
     {
-      "name": "Stylized Sword (example)",
-      "source": "ToxSam / open-source-3D-assets (index)",
+      "name": "ToxSam — weapons index (search 'sword')",
+      "source": "ToxSam/open-source-3D-assets",
       "url": "https://github.com/ToxSam/open-source-3D-assets",
-      "notes": "Large index of CC0 GLBs — search the index for 'sword' or 'weapon' to find many small prop glbs.",
-      "license_url": "https://github.com/ToxSam/open-source-3D-assets/blob/master/LICENSE.md"
+      "notes": "Contains many small weapon glbs and prop glbs under CC0. Use repo search to find specific items.",
+      "license_url": "https://github.com/ToxSam/open-source-3D-assets/blob/master/LICENSE"
     },
     {
-      "name": "Free GLB Game Assets Pack (metaworldos example)",
-      "source": "metaworldos (itch.io + repo)",
+      "name": "Stylized prop pack (metaworldos)",
+      "source": "metaworldos/game-assets",
       "url": "https://github.com/metaworldos/game-assets",
-      "notes": "Small collections of props and pickups; use as props / camp items.",
+      "notes": "Props like crates, pickups, simple weapons — check the 'glb' folders in the repo.",
       "license_url": "https://github.com/metaworldos/game-assets/blob/main/LICENSE"
     }
   ],
   "environment": [
     {
-      "name": "glTF Sample Trees / Rocks (Khronos)",
-      "source": "Khronos glTF Sample Assets",
+      "name": "Khronos glTF Sample Models — Environment models",
+      "source": "KhronosGroup/glTF-Sample-Assets",
       "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models",
-      "notes": "Browse the Models index for environment props; many are small and engine-ready.",
+      "notes": "Many small environment models useful for prototyping: rocks, trees, simple structures.",
       "license_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSE.md"
     },
     {
-      "name": "Poly Haven Textures (external, CC0)",
+      "name": "Quaternius Low-Poly Packs (site link)",
+      "source": "Quaternius",
+      "url": "https://quaternius.com/",
+      "notes": "Stylized low-poly characters and environment props (site-hosted). Many assets are CC0 and game-ready.",
+      "license_url": "https://quaternius.com/terms"
+    },
+    {
+      "name": "Poly Haven Textures (external CC0)",
       "source": "polyhaven.com",
       "url": "https://polyhaven.com/",
-      "notes": "Not GitHub-hosted, but CC0 PBR textures and HDRIs that pair well with the glb props.",
+      "notes": "High-quality CC0 PBR textures and HDRIs for skies/lighting. Not GitHub-hosted but important for look development.",
       "license_url": "https://polyhaven.com/about#license"
     }
   ],
   "audio": [
     {
-      "name": "Open Game Audio / SFX Collections (index)",
-      "source": "devanshutak25/3d-resources & awesome-cc0",
+      "name": "devanshutak25 — 3d-resources (SFX index)",
+      "source": "devanshutak25/3d-resources",
       "url": "https://github.com/devanshutak25/3d-resources",
-      "notes": "Indexes pointing at CC0 SFX and sound packs. I will harvest specific SFX that allow commercial use.",
+      "notes": "Index of free SFX and audio resources; follow links for direct downloads that allow commercial use.",
       "license_url": "https://github.com/devanshutak25/3d-resources/blob/master/README.md"
+    },
+    {
+      "name": "madjin — awesome-cc0 (audio & assets index)",
+      "source": "madjin/awesome-cc0",
+      "url": "https://github.com/madjin/awesome-cc0",
+      "notes": "Curated list of CC0 assets including sounds and music.",
+      "license_url": "https://github.com/madjin/awesome-cc0/blob/master/LICENSE"
     }
   ]
 }
