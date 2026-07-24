@@ -1,0 +1,524 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+
+type HudState = {
+  health: number;
+  stamina: number;
+  time: string;
+  quest: string;
+  detail: string;
+  prompt: string;
+  toast: string;
+};
+
+type Threat = {
+  model: THREE.Group;
+  home: THREE.Vector3;
+  health: number;
+  active: boolean;
+  phase: number;
+  lastHit: number;
+};
+
+const WORLD_SIZE = 260;
+const VILLAGE = "/assets/downloaded/medieval-village/";
+const NATURE = "/assets/downloaded/stylized-nature/";
+const MEN = "/assets/downloaded/modular-men/";
+const WOMEN = "/assets/downloaded/modular-women/";
+const MODELS = "/assets/downloaded/models/";
+
+function terrainHeight(x: number, z: number) {
+  return Math.sin(x * 0.026) * 1.4 + Math.cos(z * 0.022) * 1.1 + Math.sin((x + z) * 0.045) * 0.35;
+}
+
+function makeTerrain() {
+  const geometry = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, 90, 90);
+  geometry.rotateX(-Math.PI / 2);
+  const positions = geometry.attributes.position as THREE.BufferAttribute;
+  const colors: number[] = [];
+  const low = new THREE.Color(0x456f36);
+  const high = new THREE.Color(0x8db65c);
+  for (let index = 0; index < positions.count; index += 1) {
+    const x = positions.getX(index);
+    const z = positions.getZ(index);
+    const height = terrainHeight(x, z);
+    positions.setY(index, height);
+    const color = low.clone().lerp(high, THREE.MathUtils.clamp((height + 2.5) / 5, 0, 1));
+    colors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  const terrain = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }),
+  );
+  terrain.receiveShadow = true;
+  return terrain;
+}
+
+function prepareModel<T extends THREE.Object3D>(root: T) {
+  root.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  return root;
+}
+
+function normalizeModel(root: THREE.Object3D, targetHeight: number) {
+  prepareModel(root);
+  const initial = new THREE.Box3().setFromObject(root);
+  const height = initial.getSize(new THREE.Vector3()).y;
+  root.scale.multiplyScalar(targetHeight / Math.max(height, 0.001));
+  const scaled = new THREE.Box3().setFromObject(root);
+  root.position.y -= scaled.min.y;
+  const group = new THREE.Group();
+  group.add(root);
+  return group;
+}
+
+export function LilArtieGame() {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const pressedRef = useRef<Record<string, boolean>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [hud, setHud] = useState<HudState>({
+    health: 5,
+    stamina: 100,
+    time: "08:10",
+    quest: "Road Through Amani",
+    detail: "Travel through the village and reach the mountain road.",
+    prompt: "",
+    toast: "",
+  });
+
+  useEffect(() => {
+    const mount = mountRef.current;
+    if (!mount) return;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x8ccbd8);
+    scene.fog = new THREE.FogExp2(0xa9cfc3, 0.006);
+
+    const camera = new THREE.PerspectiveCamera(55, mount.clientWidth / mount.clientHeight, 0.1, 650);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+    renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    renderer.domElement.className = "game-canvas";
+    renderer.domElement.tabIndex = 0;
+    renderer.domElement.setAttribute("aria-label", "Lil Artie open world game");
+    mount.appendChild(renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xfff0cf, 0x38543b, 2.25));
+    const sun = new THREE.DirectionalLight(0xffe2a4, 3.7);
+    sun.position.set(-48, 72, 32);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -100;
+    sun.shadow.camera.right = 100;
+    sun.shadow.camera.top = 100;
+    sun.shadow.camera.bottom = -100;
+    scene.add(sun, makeTerrain());
+
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setMeshoptDecoder(MeshoptDecoder);
+    const fbxLoader = new FBXLoader();
+    const gltfCache = new Map<string, Promise<THREE.Object3D>>();
+    const fbxCache = new Map<string, Promise<THREE.Object3D>>();
+    const loadGLTF = (url: string) => {
+      if (!gltfCache.has(url)) {
+        gltfCache.set(url, new Promise((resolve, reject) => gltfLoader.load(url, (file) => resolve(file.scene), undefined, reject)));
+      }
+      return gltfCache.get(url)!;
+    };
+    const loadFBX = (url: string) => {
+      if (!fbxCache.has(url)) {
+        fbxCache.set(url, new Promise((resolve, reject) => fbxLoader.load(url, resolve, undefined, reject)));
+      }
+      return fbxCache.get(url)!;
+    };
+
+    const place = async (
+      loader: (url: string) => Promise<THREE.Object3D>,
+      url: string,
+      position: [number, number],
+      height: number,
+      rotation = 0,
+    ) => {
+      const source = await loader(url);
+      const model = normalizeModel(source.clone(true), height);
+      model.position.set(position[0], terrainHeight(position[0], position[1]), position[1]);
+      model.rotation.y = rotation;
+      scene.add(model);
+      return model;
+    };
+
+    const player = new THREE.Group();
+    const traveler = new THREE.Group();
+    scene.add(player, traveler);
+    const threats: Threat[] = [];
+    let axe: THREE.Group | null = null;
+    let bow: THREE.Group | null = null;
+    let ready = true;
+
+    const setupAssets = async () => {
+      try {
+        const playerSource = await loadFBX(`${MEN}Adventurer/Adventurer.fbx`);
+        player.add(normalizeModel(playerSource.clone(true), 3.1));
+        player.position.set(0, terrainHeight(0, 82), 82);
+
+        const axeSource = await loadGLTF(`${MODELS}stylized_axe.glb`);
+        axe = normalizeModel(axeSource.clone(true), 1.25);
+        axe.position.set(0.52, 1.15, 0.15);
+        axe.rotation.set(0.15, 0.2, -0.65);
+        player.add(axe);
+
+        const bowSource = await loadGLTF(`${MODELS}stylized_metal_bow_and_arrow.glb`);
+        bow = normalizeModel(bowSource.clone(true), 1.65);
+        bow.position.set(-0.52, 1.1, -0.18);
+        bow.rotation.set(0.2, Math.PI / 2, 0.4);
+        player.add(bow);
+
+        const travelerSource = await loadFBX(`${WOMEN}Adventurer/Adventurer.fbx`);
+        traveler.add(normalizeModel(travelerSource.clone(true), 3));
+        traveler.position.set(6, terrainHeight(6, -20), -20);
+        traveler.rotation.y = Math.PI;
+
+        const threatFiles = ["assassin_gold.glb", "assassin_steel.glb", "stylized_warrior.glb"];
+        const threatPositions: [number, number][] = [[-3, -5], [11, -7], [5, 4]];
+        for (let index = 0; index < threatFiles.length; index += 1) {
+          const source = await loadGLTF(`${MODELS}${threatFiles[index]}`);
+          const model = normalizeModel(source.clone(true), 3.05);
+          const [x, z] = threatPositions[index];
+          model.position.set(x, terrainHeight(x, z), z);
+          model.rotation.y = Math.PI;
+          scene.add(model);
+          threats.push({ model, home: model.position.clone(), health: 3, active: true, phase: index * 2.1, lastHit: 0 });
+        }
+
+        await Promise.all([
+          place(loadFBX, `${VILLAGE}Fantasy%20Inn/Inn.fbx`, [-24, -20], 11, 0.65),
+          place(loadFBX, `${VILLAGE}Blacksmith/Blacksmith.fbx`, [24, -17], 9.5, -0.7),
+          place(loadFBX, `${VILLAGE}Fantasy%20House/House_4.fbx`, [-36, -47], 8.5, 0.35),
+          place(loadFBX, `${VILLAGE}Fantasy%20Barracks/House_3.fbx`, [33, -45], 9.5, -0.4),
+          place(loadFBX, `${VILLAGE}Fantasy%20Stable/Stable.fbx`, [-42, 13], 8.2, Math.PI / 2),
+          place(loadFBX, `${VILLAGE}Well/Well.fbx`, [0, -26], 3.6),
+          place(loadFBX, `${VILLAGE}Market%20Stand/MarketStand_1.fbx`, [-11, -24], 4.1, 0.25),
+          place(loadFBX, `${VILLAGE}Market%20Stand/MarketStand_2.fbx`, [12, -25], 4.1, -0.25),
+          place(loadFBX, `${VILLAGE}Cart/Cart.fbx`, [17, -14], 3.2, 0.7),
+          place(loadFBX, `${VILLAGE}Bonfire/Bonfire.fbx`, [0, -13], 2.2),
+          place(loadFBX, `${NATURE}Pine%20Trees/PineTrees.fbx`, [-92, -84], 25, 0.3),
+          place(loadFBX, `${NATURE}Pine%20Trees/PineTrees.fbx`, [82, 65], 23, -0.7),
+          place(loadFBX, `${NATURE}Maple%20Trees/MapleTrees.fbx`, [82, -66], 22, -0.4),
+          place(loadFBX, `${NATURE}Maple%20Trees/MapleTrees.fbx`, [-73, 63], 21, 0.55),
+          place(loadFBX, `${NATURE}Rocks/Rocks.fbx`, [62, 32], 13, 0.2),
+          place(loadFBX, `${NATURE}Rocks/Rocks.fbx`, [-68, -18], 11, -0.45),
+          place(loadFBX, `${NATURE}Flower%20Bushes/FlowerBushes.fbx`, [-32, 38], 4.5, 0.7),
+          place(loadFBX, `${MEN}Farmer/Farmer.fbx`, [-9, -18], 3, Math.PI),
+          place(loadFBX, `${MEN}Worker/Worker.fbx`, [19, -20], 3, -2.4),
+          place(loadGLTF, `${MODELS}mountain_fbx.glb`, [92, -112], 78, -0.35),
+        ]);
+      } catch (error) {
+        ready = false;
+        console.error("Downloaded asset setup failed", error);
+        setHud((current) => ({ ...current, toast: "A downloaded asset failed to load." }));
+      } finally {
+        setLoaded(true);
+      }
+    };
+    void setupAssets();
+
+    const keys = pressedRef.current;
+    const clock = new THREE.Clock();
+    const velocity = new THREE.Vector3();
+    const move = new THREE.Vector3();
+    const target = new THREE.Vector3();
+    let cameraYaw = 0;
+    let cameraPitch = 0.42;
+    let cameraDistance = 9.5;
+    let dragging = false;
+    let dragPointer = -1;
+    let lastX = 0;
+    let lastY = 0;
+    let health = 5;
+    let stamina = 100;
+    let verticalVelocity = 0;
+    let grounded = true;
+    let lastDamage = 0;
+    let attackUntil = 0;
+    let hudTick = 0;
+    let toastText = "";
+    let toastUntil = 0;
+
+    const toast = (message: string, seconds = 3) => {
+      toastText = message;
+      toastUntil = clock.elapsedTime + seconds;
+    };
+    const attack = () => {
+      if (!ready || clock.elapsedTime < attackUntil) return;
+      attackUntil = clock.elapsedTime + 0.55;
+      const forward = new THREE.Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+      for (const threat of threats) {
+        if (!threat.active || player.position.distanceTo(threat.model.position) > 3.7) continue;
+        const direction = threat.model.position.clone().sub(player.position).setY(0).normalize();
+        if (forward.dot(direction) < 0.05) continue;
+        threat.health -= 1;
+        threat.model.position.addScaledVector(direction, 1.1);
+        if (threat.health <= 0) {
+          threat.active = false;
+          threat.model.visible = false;
+          toast("Threat stopped.", 2);
+        }
+      }
+    };
+    const interact = () => {
+      if (player.position.distanceTo(traveler.position) < 5) toast("Traveler: The mountain road is dangerous. Stay alert.", 4);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      keys[event.code] = true;
+      if (event.code === "Space" && grounded) {
+        verticalVelocity = 7.2;
+        grounded = false;
+      }
+      if (event.code === "KeyF" || event.code === "Enter") attack();
+      if (event.code === "KeyE") interact();
+    };
+    const onKeyUp = (event: KeyboardEvent) => { keys[event.code] = false; };
+    const onPointerDown = (event: PointerEvent) => {
+      renderer.domElement.focus();
+      if (event.button === 0) attack();
+      if (event.button === 1 || event.button === 2) {
+        dragging = true;
+        dragPointer = event.pointerId;
+        lastX = event.clientX;
+        lastY = event.clientY;
+        renderer.domElement.setPointerCapture(event.pointerId);
+      }
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging || event.pointerId !== dragPointer) return;
+      cameraYaw -= (event.clientX - lastX) * 0.007;
+      cameraPitch = THREE.MathUtils.clamp(cameraPitch + (event.clientY - lastY) * 0.005, 0.12, 1.05);
+      lastX = event.clientX;
+      lastY = event.clientY;
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (event.pointerId === dragPointer) {
+        dragging = false;
+        dragPointer = -1;
+        if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+    };
+    const onWheel = (event: WheelEvent) => {
+      cameraDistance = THREE.MathUtils.clamp(cameraDistance + event.deltaY * 0.012, 5.5, 15);
+    };
+    const onResize = () => {
+      camera.aspect = mount.clientWidth / mount.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(mount.clientWidth, mount.clientHeight);
+    };
+    const onContext = (event: MouseEvent) => event.preventDefault();
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("resize", onResize);
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointercancel", onPointerUp);
+    renderer.domElement.addEventListener("wheel", onWheel, { passive: true });
+    renderer.domElement.addEventListener("contextmenu", onContext);
+
+    camera.position.set(0, 8, 92);
+    let animationId = 0;
+    const animate = () => {
+      animationId = requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.035);
+      const now = clock.elapsedTime;
+
+      move.set(0, 0, 0);
+      if (keys.KeyW || keys.ArrowUp) move.z -= 1;
+      if (keys.KeyS || keys.ArrowDown) move.z += 1;
+      if (keys.KeyA || keys.ArrowLeft) move.x -= 1;
+      if (keys.KeyD || keys.ArrowRight) move.x += 1;
+      const sprinting = (keys.ShiftLeft || keys.ShiftRight) && move.lengthSq() > 0 && stamina > 2;
+      const speed = sprinting ? 11 : 6.5;
+      stamina = THREE.MathUtils.clamp(stamina + (sprinting ? -30 : 20) * delta, 0, 100);
+      if (move.lengthSq() > 0 && ready) {
+        move.normalize().applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+        velocity.lerp(move.multiplyScalar(speed), 0.2);
+        player.position.addScaledVector(velocity, delta);
+        const heading = Math.atan2(velocity.x, velocity.z);
+        const difference = Math.atan2(Math.sin(heading - player.rotation.y), Math.cos(heading - player.rotation.y));
+        player.rotation.y += difference * Math.min(1, delta * 13);
+      } else {
+        velocity.multiplyScalar(Math.pow(0.005, delta));
+      }
+      player.position.x = THREE.MathUtils.clamp(player.position.x, -124, 124);
+      player.position.z = THREE.MathUtils.clamp(player.position.z, -124, 124);
+      verticalVelocity -= 18 * delta;
+      player.position.y += verticalVelocity * delta;
+      const ground = terrainHeight(player.position.x, player.position.z);
+      if (player.position.y <= ground) {
+        player.position.y = ground;
+        verticalVelocity = 0;
+        grounded = true;
+      }
+
+      if (axe) axe.rotation.z = now < attackUntil ? -1.9 + Math.sin((attackUntil - now) * 9) : -0.65;
+      if (bow) bow.visible = true;
+
+      for (const threat of threats) {
+        if (!threat.active || !ready) continue;
+        const distance = threat.model.position.distanceTo(player.position);
+        if (distance < 17 && distance > 2.4) {
+          const direction = player.position.clone().sub(threat.model.position).setY(0).normalize();
+          threat.model.position.addScaledVector(direction, delta * 2.3);
+          threat.model.rotation.y = Math.atan2(direction.x, direction.z);
+        } else if (distance >= 17) {
+          const patrol = threat.home.clone().add(new THREE.Vector3(Math.sin(now * 0.45 + threat.phase) * 3, 0, Math.cos(now * 0.45 + threat.phase) * 3));
+          const direction = patrol.sub(threat.model.position).setY(0).normalize();
+          threat.model.position.addScaledVector(direction, delta * 0.65);
+          threat.model.rotation.y = Math.atan2(direction.x, direction.z);
+        }
+        threat.model.position.y = terrainHeight(threat.model.position.x, threat.model.position.z);
+        if (distance < 2.5 && now - threat.lastHit > 1.4 && now - lastDamage > 0.6) {
+          threat.lastHit = now;
+          lastDamage = now;
+          health = Math.max(0, health - 1);
+          toast(health ? "Move away and counterattack." : "Returning to the village road...", 3);
+          if (!health) {
+            health = 5;
+            player.position.set(0, terrainHeight(0, 82), 82);
+          }
+        }
+      }
+
+      target.set(player.position.x, player.position.y + 2.1, player.position.z);
+      const desired = new THREE.Vector3(
+        Math.sin(cameraYaw) * Math.cos(cameraPitch) * cameraDistance,
+        Math.sin(cameraPitch) * cameraDistance + 1.1,
+        Math.cos(cameraYaw) * Math.cos(cameraPitch) * cameraDistance,
+      ).add(target);
+      camera.position.lerp(desired, 1 - Math.pow(0.0008, delta));
+      camera.lookAt(target);
+
+      if (now - hudTick > 0.12) {
+        hudTick = now;
+        const nearTraveler = player.position.distanceTo(traveler.position) < 5;
+        const remaining = threats.filter((threat) => threat.active).length;
+        const daylight = (now * 0.3 + 8.15) % 24;
+        setHud({
+          health,
+          stamina,
+          time: `${String(Math.floor(daylight)).padStart(2, "0")}:${String(Math.floor((daylight % 1) * 60)).padStart(2, "0")}`,
+          quest: remaining ? "Road Through Amani" : "Village Road Secured",
+          detail: remaining ? `Reach the village. ${remaining} human threats remain near the road.` : "The road is clear. Continue toward the mountain.",
+          prompt: nearTraveler ? "E  Talk to traveler" : "",
+          toast: now < toastUntil ? toastText : "",
+        });
+      }
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("resize", onResize);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointercancel", onPointerUp);
+      renderer.domElement.removeEventListener("wheel", onWheel);
+      renderer.domElement.removeEventListener("contextmenu", onContext);
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach((material) => material.dispose());
+        }
+      });
+      renderer.dispose();
+      if (renderer.domElement.parentElement === mount) mount.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  const setTouch = (code: string, value: boolean) => { pressedRef.current[code] = value; };
+  const touchButton = (label: string, className: string, code: string) => (
+    <button
+      className={`touch-btn ${className}`}
+      aria-label={label}
+      onPointerDown={(event) => { event.preventDefault(); setTouch(code, true); }}
+      onPointerUp={() => setTouch(code, false)}
+      onPointerCancel={() => setTouch(code, false)}
+      onPointerLeave={() => setTouch(code, false)}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <main className="game-shell">
+      <div ref={mountRef} className="game-mount" />
+      <div className="grain" />
+      <div className={`loading ${loaded ? "done" : ""}`}>
+        <div className="loading-inner">
+          <div className="loading-mark">Lil Artie</div>
+          <p>Loading downloaded world assets...</p>
+          <div className="loading-bar"><span /></div>
+        </div>
+      </div>
+
+      <section className="hud" aria-label="Game status">
+        <header className="brand">
+          <p className="eyebrow">An open-world adventure</p>
+          <h1>Lil Artie <span>Roads of Amani</span></h1>
+        </header>
+        <div className="status">
+          <div className="hearts" aria-label={`${hud.health} health`}>
+            {[0, 1, 2, 3, 4].map((heart) => <span key={heart} className={heart < hud.health ? "heart" : "heart empty"}>♥</span>)}
+          </div>
+          <div className="stamina" aria-label={`${Math.round(hud.stamina)} percent stamina`}><span style={{ width: `${hud.stamina}%` }} /></div>
+          <div className="clock">{hud.time}</div>
+        </div>
+        <div className="quest-card">
+          <p className="label">Current situation</p>
+          <p className="title">{hud.quest}</p>
+          <p className="detail">{hud.detail}</p>
+        </div>
+        <div className="minimap" aria-label="Area map">
+          <span className="north">N</span><span className="player-dot" /><span className="poi-dot" style={{ left: "43%", top: "31%" }} />
+        </div>
+      </section>
+
+      {hud.prompt && <div className="prompt"><kbd>{hud.prompt.slice(0, 1)}</kbd>{hud.prompt.slice(1)}</div>}
+      {hud.toast && <div className="toast" role="status">{hud.toast}</div>}
+      <div className="controls"><strong>MOVE</strong> WASD<br /><strong>SPRINT</strong> SHIFT<br /><strong>JUMP</strong> SPACE<br /><strong>ATTACK</strong> CLICK / F<br /><strong>INTERACT</strong> E<br /><strong>CAMERA</strong> RIGHT-DRAG<br /><strong>ZOOM</strong> WHEEL</div>
+
+      <div className="touch-controls" aria-label="Touch controls">
+        <div className="dpad">
+          {touchButton("▲", "touch-up", "KeyW")}{touchButton("◀", "touch-left", "KeyA")}
+          {touchButton("▼", "touch-down", "KeyS")}{touchButton("▶", "touch-right", "KeyD")}
+        </div>
+        <div className="actions">
+          {touchButton("Run", "", "ShiftLeft")}
+          <button className="touch-btn" onPointerDown={() => window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }))}>Jump</button>
+          <button className="touch-btn attack" onPointerDown={() => window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyF" }))}>Attack</button>
+          <button className="touch-btn" onPointerDown={() => window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyE" }))}>Talk</button>
+        </div>
+      </div>
+    </main>
+  );
+}
