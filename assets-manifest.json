@@ -1,0 +1,87 @@
+{
+  "characters": [
+    {
+      "name": "Fox",
+      "source": "KhronosGroup glTF Sample Assets",
+      "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/raw/main/Models/Fox/glTF-Binary/Fox.glb",
+      "notes": "Includes Survey, Walk, Run animations. Good for locomotion and blending tests.",
+      "license_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSE.md"
+    },
+    {
+      "name": "CesiumMan",
+      "source": "KhronosGroup glTF Sample Assets",
+      "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/raw/main/Models/CesiumMan/glTF-Binary/CesiumMan.glb",
+      "notes": "Includes Idle and Walk animations. Classic humanoid sample.",
+      "license_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSE.md"
+    },
+    {
+      "name": "Monster",
+      "source": "KhronosGroup glTF Sample Assets",
+      "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/raw/main/Models/Monster/glTF-Binary/Monster.glb",
+      "notes": "Animated monster sample; useful for enemy behavior tests.",
+      "license_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSE.md"
+    },
+    {
+      "name": "RiggedSimple",
+      "source": "KhronosGroup glTF Sample Assets",
+      "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/raw/main/Models/RiggedSimple/glTF-Binary/RiggedSimple.glb",
+      "notes": "Very small rigged figure for basic skinning tests.",
+      "license_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSE.md"
+    },
+    {
+      "name": "Robot Avatar (Mozilla Hubs)",
+      "source": "mozilla/hubs-avatars",
+      "url": "https://github.com/mozilla/hubs-avatars/raw/master/defaults/robot.glb",
+      "notes": "Small CC0 avatar; many hubs avatars are CC0 and Mixamo/Y-Bot compatible.",
+      "license_url": "https://github.com/mozilla/hubs-avatars/blob/master/LICENSE"
+    },
+    {
+      "name": "Y-Bot Running (mixamo-to-gltf example)",
+      "source": "stefnotch/mixamo-to-gltf",
+      "url": "https://github.com/stefnotch/mixamo-to-gltf/blob/master/output/Y-Bot/Running.glb?raw=true",
+      "notes": "Example Mixamo-converted animation (running). Use only if you accept Mixamo-exported clips.",
+      "license_url": "https://github.com/stefnotch/mixamo-to-gltf/blob/master/LICENSE"
+    }
+  ],
+  "props": [
+    {
+      "name": "Stylized Sword (example)",
+      "source": "ToxSam / open-source-3D-assets (index)",
+      "url": "https://github.com/ToxSam/open-source-3D-assets",
+      "notes": "Large index of CC0 GLBs — search the index for 'sword' or 'weapon' to find many small prop glbs.",
+      "license_url": "https://github.com/ToxSam/open-source-3D-assets/blob/master/LICENSE.md"
+    },
+    {
+      "name": "Free GLB Game Assets Pack (metaworldos example)",
+      "source": "metaworldos (itch.io + repo)",
+      "url": "https://github.com/metaworldos/game-assets",
+      "notes": "Small collections of props and pickups; use as props / camp items.",
+      "license_url": "https://github.com/metaworldos/game-assets/blob/main/LICENSE"
+    }
+  ],
+  "environment": [
+    {
+      "name": "glTF Sample Trees / Rocks (Khronos)",
+      "source": "Khronos glTF Sample Assets",
+      "url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models",
+      "notes": "Browse the Models index for environment props; many are small and engine-ready.",
+      "license_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/blob/main/LICENSE.md"
+    },
+    {
+      "name": "Poly Haven Textures (external, CC0)",
+      "source": "polyhaven.com",
+      "url": "https://polyhaven.com/",
+      "notes": "Not GitHub-hosted, but CC0 PBR textures and HDRIs that pair well with the glb props.",
+      "license_url": "https://polyhaven.com/about#license"
+    }
+  ],
+  "audio": [
+    {
+      "name": "Open Game Audio / SFX Collections (index)",
+      "source": "devanshutak25/3d-resources & awesome-cc0",
+      "url": "https://github.com/devanshutak25/3d-resources",
+      "notes": "Indexes pointing at CC0 SFX and sound packs. I will harvest specific SFX that allow commercial use.",
+      "license_url": "https://github.com/devanshutak25/3d-resources/blob/master/README.md"
+    }
+  ]
+}
