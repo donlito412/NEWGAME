@@ -43,3 +43,6 @@ next-env.d.ts
 
 # GitHub 100MB limit — source archive stays on the external drive
 05_ASSETS/fab_downloads/lapa_stylized_assassin/free_stylized_assasin.zip
+
+# TypeScript build info (local incremental build artifacts)
+tsconfig.tsbuildinfo
