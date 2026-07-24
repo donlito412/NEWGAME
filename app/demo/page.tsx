@@ -1,5 +1,3 @@
-// app/demo/page.tsx (disabled)
-// This file has been intentionally disabled to avoid route conflicts with app/demo/page.jsx.
-// Keeping this placeholder prevents accidental re-introduction of a duplicate "/demo" route.
-
-// If you need a TypeScript page here in the future, rename or restore with a single default export.
+// Disabled placeholder to avoid duplicate /demo route.
+// This file intentionally exports nothing so the app/demo/page.jsx provides the /demo route.
+// If you want to re-enable a TypeScript page here, restore a single default export only.
