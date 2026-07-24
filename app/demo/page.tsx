@@ -1,13 +1,5 @@
-import React from 'react';
-import dynamic from 'next/dynamic';
+// app/demo/page.tsx (disabled)
+// This file has been intentionally disabled to avoid route conflicts with app/demo/page.jsx.
+// Keeping this placeholder prevents accidental re-introduction of a duplicate "/demo" route.
 
-const CharacterDemo = dynamic(() => import('../../game/demo/CharacterDemo'), { ssr: false });
-
-export default function Page() {
-  return (
-    <main style={{ padding: 24 }}>
-      <h1>Lil Artie — Asset Demo</h1>
-      <CharacterDemo />
-    </main>
-  );
-}
+// If you need a TypeScript page here in the future, rename or restore with a single default export.
