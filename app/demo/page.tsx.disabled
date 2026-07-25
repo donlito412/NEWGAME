@@ -1,0 +1,3 @@
+// Disabled original demo page content moved to app/demo/page.tsx.disabled to avoid duplicate /demo route.
+// This file intentionally removed any default export so it will not register as a Next.js route.
+// If you need to restore the original TypeScript page, rename app/demo/page.tsx.disabled back to app/demo/page.tsx and ensure it exports a single default component.
