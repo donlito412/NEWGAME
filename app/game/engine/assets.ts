@@ -25,10 +25,12 @@ export class AssetLibrary {
 
   gltf(url: string): Promise<LoadedGLTF> {
     if (!this.gltfCache.has(url)) {
+      // encodeURI keeps "/" but escapes spaces ("GLB format", "Fantasy Inn") so loads never 404.
+      const safe = encodeURI(url);
       this.gltfCache.set(
         url,
         new Promise((resolve, reject) =>
-          this.gltfLoader.load(url, (file) => resolve({ scene: file.scene, animations: file.animations }), undefined, reject),
+          this.gltfLoader.load(safe, (file) => resolve({ scene: file.scene, animations: file.animations }), undefined, reject),
         ),
       );
     }
@@ -37,7 +39,8 @@ export class AssetLibrary {
 
   fbx(url: string): Promise<THREE.Group> {
     if (!this.fbxCache.has(url)) {
-      this.fbxCache.set(url, new Promise((resolve, reject) => this.fbxLoader.load(url, resolve, undefined, reject)));
+      const safe = encodeURI(url);
+      this.fbxCache.set(url, new Promise((resolve, reject) => this.fbxLoader.load(safe, resolve, undefined, reject)));
     }
     return this.fbxCache.get(url)!;
   }

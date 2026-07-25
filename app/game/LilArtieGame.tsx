@@ -106,26 +106,31 @@ export function LilArtieGame() {
     };
 
     const setup = async () => {
+      // The player + camera must come alive first, independent of the rest of the
+      // world. If a single prop or NPC fails later, movement and camera keep working.
       try {
-        const [worldLandmarks, playerActor, npcList, banditList, travelerActor] = await Promise.all([
-          buildWorld(assets, scene, collision),
-          createPlayer(assets, scene),
-          createNpcs(assets, scene),
-          createBandits(assets, scene),
-          createTraveler(assets, scene),
-        ]);
-        landmarks = worldLandmarks;
-        player = playerActor;
-        npcs = npcList;
-        bandits = banditList;
-        traveler = travelerActor;
+        player = await createPlayer(assets, scene);
         ready = true;
       } catch (error) {
-        console.error("Asset setup failed", error);
-        toast("An asset failed to load. Check the console.", 8);
+        console.error("Player failed to load", error);
+        toast("The player model failed to load. Check the console.", 8);
       } finally {
         setLoaded(true);
       }
+
+      // Everything else streams in the background; failures are isolated.
+      buildWorld(assets, scene, collision)
+        .then((result) => { landmarks = result; })
+        .catch((error) => console.warn("World build had failures", error));
+      createNpcs(assets, scene)
+        .then((result) => { npcs = result; })
+        .catch((error) => console.warn("NPC load failed", error));
+      createBandits(assets, scene)
+        .then((result) => { bandits = result; })
+        .catch((error) => console.warn("Bandit load failed", error));
+      createTraveler(assets, scene)
+        .then((result) => { traveler = result; })
+        .catch((error) => console.warn("Traveler load failed", error));
     };
     void setup();
 

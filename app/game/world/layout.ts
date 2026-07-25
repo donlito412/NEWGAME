@@ -85,13 +85,18 @@ export async function buildWorld(
 ): Promise<LandmarkPoint[]> {
   const landmarks: LandmarkPoint[] = [];
   const placeAll = [...STRUCTURES, ...CAMP_PROPS, ...TREES, ...SCENERY].map(async (item) => {
-    const source = item.kind === "fbx" ? await assets.fbx(item.url) : (await assets.gltf(item.url)).scene;
-    const model = normalizeModel(source.clone(true), item.height);
-    model.position.set(item.x, terrainHeight(item.x, item.z), item.z);
-    model.rotation.y = item.rotation ?? 0;
-    scene.add(model);
-    if (item.collider) collision.add({ x: item.x, z: item.z, r: item.collider });
-    if (item.landmark) landmarks.push({ x: item.x, z: item.z, label: item.landmark });
+    try {
+      const source = item.kind === "fbx" ? await assets.fbx(item.url) : (await assets.gltf(item.url)).scene;
+      const model = normalizeModel(source.clone(true), item.height);
+      model.position.set(item.x, terrainHeight(item.x, item.z), item.z);
+      model.rotation.y = item.rotation ?? 0;
+      scene.add(model);
+      if (item.collider) collision.add({ x: item.x, z: item.z, r: item.collider });
+      if (item.landmark) landmarks.push({ x: item.x, z: item.z, label: item.landmark });
+    } catch (error) {
+      // One bad prop must never freeze the world; log and keep going.
+      console.warn(`World prop failed to load: ${item.url}`, error);
+    }
   });
   await Promise.all(placeAll);
   return landmarks;

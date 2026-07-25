@@ -17,19 +17,11 @@ export class CollisionWorld {
   /** Pushes a position out of every overlapping collider and clamps to world bounds. */
   resolve(position: THREE.Vector3, radius: number) {
     for (const collider of this.colliders) {
-      let dx = position.x - collider.x;
-      let dz = position.z - collider.z;
+      const dx = position.x - collider.x;
+      const dz = position.z - collider.z;
       const minimum = collider.r + radius;
       const distanceSq = dx * dx + dz * dz;
-      if (distanceSq >= minimum * minimum) continue;
-
-      // Avoid division by zero when the position is exactly at the collider center.
-      if (distanceSq === 0) {
-        // Nudge the position out along the X axis by the minimum amount.
-        position.x += minimum;
-        continue;
-      }
-
+      if (distanceSq >= minimum * minimum || distanceSq === 0) continue;
       const distance = Math.sqrt(distanceSq);
       const push = (minimum - distance) / distance;
       position.x += dx * push;
